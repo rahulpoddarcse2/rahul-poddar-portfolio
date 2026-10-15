@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: portfolio
+      POSTGRES_USER: portfolio
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U portfolio"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [data]
+  backend:
+    build: ./backend
+    environment:
+      DB_HOST: db
+      DB_PASSWORD: ${DB_PASSWORD}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      MAIL_TO: rahulpoddarcse1@gmail.com
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+    networks: [data, web]
+  frontend:
+    build: ./frontend
+    ports: ["80:80"]
+    depends_on: [backend]
+    restart: unless-stopped
+    networks: [web]
+volumes:
+  pgdata:
+networks:
+  data:
+  web:
