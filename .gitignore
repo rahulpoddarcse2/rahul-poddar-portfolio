@@ -7,3 +7,5 @@
 __pycache__/
 *.pyc
 .vscode/
+
+k8s/secrets.yaml

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: portfolio
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: postgres:16-alpine
+          command: ["sh", "-c", "until pg_isready -h db -U portfolio; do echo waiting for db; sleep 2; done"]
+      containers:
+        - name: backend
+          image: ghcr.io/rahulpoddarcse2/portfolio-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_HOST
+              value: db
+            - name: MAIL_TO
+              value: rahulpoddarcse1@gmail.com
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: portfolio-secrets, key: DB_PASSWORD }
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef: { name: portfolio-secrets, key: SMTP_USER }
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef: { name: portfolio-secrets, key: SMTP_PASS }
+          readinessProbe:
+            tcpSocket:
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+# Service ka naam "backend" hi rahega, kyunki nginx.conf mein proxy_pass http://backend:5000 hai
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: portfolio
+spec:
+  selector: { app: backend }
+  ports:
+    - port: 5000
+      targetPort: 5000
