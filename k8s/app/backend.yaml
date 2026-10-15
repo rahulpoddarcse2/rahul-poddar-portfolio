@@ -18,7 +18,7 @@ spec:
       containers:
         - name: backend
           image: ghcr.io/rahulpoddarcse2/portfolio-backend:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
           env:
