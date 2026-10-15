@@ -8,6 +8,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+PHONE_RE = re.compile(r"^\+?[\d\s\-]{7,20}$")
 hits = {}
 
 def query(sql, args=(), fetch=True):
@@ -27,7 +28,7 @@ def limited(ip):
     hits[ip] = recent
     return len(recent) > 5
 
-def send_mail(name, email, msg, ip):
+def send_mail(name, email, phone, msg, ip):
     user, pw = os.getenv("SMTP_USER"), os.getenv("SMTP_PASS")
     to = os.getenv("MAIL_TO", user)
     if not (user and pw):
@@ -36,7 +37,7 @@ def send_mail(name, email, msg, ip):
     m = EmailMessage()
     m["Subject"] = "Portfolio message from " + name[:60]
     m["From"], m["To"], m["Reply-To"] = user, to, email
-    m.set_content(f"Name: {name}\nEmail: {email}\nIP: {ip}\n\nMessage:\n{msg}")
+    m.set_content(f"Name: {name}\nEmail: {email}\nPhone: {phone or '-'}\nIP: {ip}\n\nMessage:\n{msg}")
     try:
         with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as s:
             s.starttls()
@@ -70,12 +71,16 @@ def contact():
     if str(d.get("website", "")).strip():            # honeypot: bots fill this hidden field
         return {"ok": True}, 201
     name, email, msg = (str(d.get(k, "")).strip() for k in ("name", "email", "message"))
+    phone = str(d.get("phone", "")).strip()          # optional
     name = " ".join(name.split())
     if not (name and EMAIL_RE.match(email) and msg) or len(msg) > 2000 or len(name) > 100:
+        return {"error": "Please fill all fields correctly"}, 400
+    if phone and not PHONE_RE.match(phone):
         return {"error": "Please fill all fields correctly"}, 400
     ip = request.headers.get("X-Real-IP", request.remote_addr)
     if limited(ip):
         return {"error": "Too many messages, try again later"}, 429
-    query("INSERT INTO messages(name,email,message) VALUES(%s,%s,%s)", (name, email, msg), fetch=False)
-    threading.Thread(target=send_mail, args=(name, email, msg, ip), daemon=True).start()
+    query("INSERT INTO messages(name,email,phone,message) VALUES(%s,%s,%s,%s)",
+          (name, email, phone or None, msg), fetch=False)
+    threading.Thread(target=send_mail, args=(name, email, phone, msg, ip), daemon=True).start()
     return {"ok": True}, 201

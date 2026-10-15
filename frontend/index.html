@@ -96,6 +96,7 @@
     <form id="form" class="card form">
       <h3 class="form-title">Contact Form</h3>
       <div class="two"><input name="name" placeholder="Your name" required maxlength="100"><input name="email" type="email" placeholder="Your email" required maxlength="150"></div>
+      <input name="phone" type="tel" placeholder="Your phone (optional)" maxlength="20" pattern="[+]?[0-9\s\-]{7,20}">
       <textarea name="message" placeholder="Your message" rows="5" required maxlength="2000"></textarea>
       <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
       <div class="row"><button class="btn" type="submit">Send message</button><p id="status" role="status"></p></div>
